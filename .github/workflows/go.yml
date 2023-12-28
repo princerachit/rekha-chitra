@@ -20,12 +20,9 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod'
-#
-#      - name: Build
-#        run: go build -o bin/ -v ./...
+
+      - name: Benchmark
+        run: go test -bench . ./... -run=^#
 
       - name: Test
         run: go test -v ./...
-#
-#      - name: package
-#        run: docker build -t sinhasoftwaresolutions.azurecr.io/kalakaar .
