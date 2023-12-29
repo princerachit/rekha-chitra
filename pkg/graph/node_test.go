@@ -2,6 +2,8 @@ package graph
 
 import (
 	"reflect"
+	"sort"
+	"strconv"
 	"sync"
 	"testing"
 )
@@ -70,11 +72,13 @@ func TestGraph_PruneNode(t *testing.T) {
 	})
 	t.Run("Node does not exist and continues to not exist", func(t *testing.T) {
 		g := &Graph{
-			Nodes: make(map[string]Hashset),
+			Nodes: map[string]Hashset{
+				"a": {"b": true},
+			},
 			mutex: new(sync.RWMutex),
 		}
-		g.PruneNode("a")
-		if _, ok := g.Nodes["a"]; ok {
+		g.PruneNode("random")
+		if _, ok := g.Nodes["random"]; ok {
 			t.Errorf("PruneNode() expected to remove the Node but it exists")
 		}
 	})
@@ -101,17 +105,25 @@ func TestGraph_PruneNode(t *testing.T) {
 
 func TestGraph_GetPruneCandidates(t *testing.T) {
 	t.Run("Pruning candidates exist and are returned", func(t *testing.T) {
-		g := createTestGraph()
-		expected := []string{"c", "d"}
-		if got := g.GetPruneCandidates(); !reflect.DeepEqual(got, expected) {
+		graph, pruneCandidates := createHugeGraphAndPruneCandidates()
+		expected := pruneCandidates
+		sort.Strings(expected)
+		got := graph.GetPruneCandidates()
+		sort.Strings(got)
+
+		if !reflect.DeepEqual(got, expected) {
 			t.Errorf("GetPruneCandidates() = %v, want %v", got, expected)
 		}
 	})
 
 	t.Run("Pruning candidates don't exist so empty slice is returned", func(t *testing.T) {
-		g := createTestGraph()
-		delete(g.Nodes, "c")
-		delete(g.Nodes, "d")
+		g := Graph{
+			Nodes: map[string]Hashset{
+				"a": {"b": true, "c": true},
+				"b": {"c": true, "d": true},
+			},
+			mutex: new(sync.RWMutex),
+		}
 		var expected []string
 		if got := g.GetPruneCandidates(); !reflect.DeepEqual(got, expected) {
 			t.Errorf("GetPruneCandidates() = %v, want %v", got, expected)
@@ -121,47 +133,28 @@ func TestGraph_GetPruneCandidates(t *testing.T) {
 
 func TestGraph_PruneNodes(t *testing.T) {
 	t.Run("Nodes exists and there are edges to the node which are removed too", func(t *testing.T) {
-		g := &Graph{
-			Nodes: map[string]Hashset{
-				"a": {"b": true, "d": true, "e": true},
-				"c": {"b": true, "d": true, "f": true},
-				"b": {},
-				"d": {},
-			},
-			mutex: new(sync.RWMutex),
-		}
-		g.PruneNodes([]string{"b", "d"})
-		if _, ok := g.Nodes["b"]; ok {
-			t.Errorf("PruneNodes() expected to remove the Node b but it still exists")
-		}
-		if _, ok := g.Nodes["d"]; ok {
-			t.Errorf("PruneNodes() expected to remove the Node d but it still exists")
-		}
-		if _, ok := g.Nodes["a"]["b"]; ok {
-			t.Errorf("PruneNodes() expected to remove the edge to Node b but it still exists")
-		}
-		if _, ok := g.Nodes["a"]["d"]; ok {
-			t.Errorf("PruneNodes() expected to remove the edge to Node d but it still exists")
-		}
-		if _, ok := g.Nodes["a"]["e"]; !ok {
-			t.Errorf("PruneNodes() expected to not remove the edge to other Node e but removed")
-		}
-		if _, ok := g.Nodes["c"]["f"]; !ok {
-			t.Errorf("PruneNodes() expected to not remove the edge to other Node f but removed")
+		graph, pruneCandidates := createHugeGraphAndPruneCandidates()
+		graph.PruneNodes(pruneCandidates)
+		for _, node := range pruneCandidates {
+			if _, ok := graph.Nodes[node]; ok {
+				t.Errorf("PruneNodes() expected to remove the Node but it still exists")
+			}
+			for _, v := range graph.Nodes {
+				if _, ok := v[node]; ok {
+					t.Errorf("PruneNodes() expected to remove the edge to Node but it still exists")
+				}
+			}
 		}
 	})
-}
-
-func createTestGraph() Graph {
-	return Graph{
-		Nodes: map[string]Hashset{
-			"a": {"b": true, "c": true},
-			"b": {"c": true, "d": true},
-			"c": {},
-			"d": {},
-		},
-		mutex: new(sync.RWMutex),
-	}
+	t.Run("Nodes don't exist and there are no edges to the node", func(t *testing.T) {
+		graph, _ := createHugeGraphAndPruneCandidates()
+		originalNodesSize := len(graph.Nodes)
+		pruneNodes := []string{"random1", "random2"}
+		graph.PruneNodes(pruneNodes)
+		if len(graph.Nodes) != originalNodesSize {
+			t.Errorf("PruneNodes() expected to not remove any nodes but removed")
+		}
+	})
 }
 
 // ----- Below set of benchmarks are for small graphs-----//
@@ -230,61 +223,49 @@ func BenchmarkGraph_CreateHugeGraphAndPruneCandidates(b *testing.B) {
 
 func BenchmarkGraph_PruneNodeForHugeGraph(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		m, p := createHugeGraphAndPruneCandidates()
-		g := Graph{
-			Nodes: m,
-			mutex: new(sync.RWMutex),
-		}
+		g, p := createHugeGraphAndPruneCandidates()
 		g.PruneNode(p[0])
 	}
 }
 
 func BenchmarkGraph_PruneNodesForHugeGraph(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		m, p := createHugeGraphAndPruneCandidates()
-		g := Graph{
-			Nodes: m,
-			mutex: new(sync.RWMutex),
-		}
+		g, p := createHugeGraphAndPruneCandidates()
 		g.PruneNodes(p)
 	}
 }
 
 func BenchmarkGraph_GetPruneCandidatesForHugeGraph(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		m, _ := createHugeGraphAndPruneCandidates()
-		g := Graph{
-			Nodes: m,
-			mutex: new(sync.RWMutex),
-		}
+		g, _ := createHugeGraphAndPruneCandidates()
 		g.GetPruneCandidates()
 	}
 }
 
 func BenchmarkGraph_AddOrReplaceNodeForHugeGraph(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		m, p := createHugeGraphAndPruneCandidates()
-		g := Graph{
-			Nodes: m,
-			mutex: new(sync.RWMutex),
-		}
+		g, p := createHugeGraphAndPruneCandidates()
 		g.AddOrReplaceNode(p[0], Hashset{"random": true})
 	}
 }
 
-func createHugeGraphAndPruneCandidates() (map[string]Hashset, []string) {
+func createHugeGraphAndPruneCandidates() (Graph, []string) {
 	m := make(map[string]Hashset, 10000)
-	leaves := make([]string, 500)
+	pruneCandidates := make([]string, 500)
 	for i := 0; i < 5000; i++ {
 		h := make(Hashset, 1000)
 		for j := 5000; j < 6000; j++ {
-			h[string(rune(j))] = true
+			h[strconv.Itoa(j)] = true
 		}
-		m[string(rune(i))] = h
+		m[strconv.Itoa(i)] = h
 	}
 	for i := 5000; i < 5500; i++ {
-		m[string(rune(i))] = Hashset{}
-		leaves[i-5000] = string(rune(i))
+		m[strconv.Itoa(i)] = Hashset{}
+		pruneCandidates[i-5000] = strconv.Itoa(i)
 	}
-	return m, leaves
+	g := Graph{
+		Nodes: m,
+		mutex: new(sync.RWMutex),
+	}
+	return g, pruneCandidates
 }
