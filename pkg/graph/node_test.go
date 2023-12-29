@@ -16,7 +16,7 @@ func TestNewGraph(t *testing.T) {
 		{
 			name: "Graph with empty nodes",
 			want: &Graph{
-				Nodes: make(map[string]Hashset),
+				Nodes: make(map[string]Dependents),
 				mutex: new(sync.RWMutex),
 			},
 		},
@@ -33,21 +33,21 @@ func TestNewGraph(t *testing.T) {
 func TestGraph_AddOrReplaceNode(t *testing.T) {
 	t.Run("Key does not exist and gets added", func(t *testing.T) {
 		g := &Graph{
-			Nodes: make(map[string]Hashset),
+			Nodes: make(map[string]Dependents),
 			mutex: new(sync.RWMutex),
 		}
-		g.AddOrReplaceNode("a", Hashset{"b": true})
+		g.AddOrReplaceNode("a", Dependents{"b": true})
 		if g.Nodes["a"]["b"] != true {
 			t.Errorf("AddOrReplaceNode() = %v, want %v", g.Nodes["a"]["b"], true)
 		}
 	})
 	t.Run("Key already exists and value gets replaced", func(t *testing.T) {
 		g := &Graph{
-			Nodes: make(map[string]Hashset),
+			Nodes: make(map[string]Dependents),
 			mutex: new(sync.RWMutex),
 		}
-		g.AddOrReplaceNode("a", Hashset{"b": true})
-		g.AddOrReplaceNode("a", Hashset{"c": true})
+		g.AddOrReplaceNode("a", Dependents{"b": true})
+		g.AddOrReplaceNode("a", Dependents{"c": true})
 		if g.Nodes["a"]["c"] != true {
 			t.Errorf("AddOrReplaceNode() = %v, want %v", g.Nodes["a"]["c"], true)
 		}
@@ -60,7 +60,7 @@ func TestGraph_AddOrReplaceNode(t *testing.T) {
 func TestGraph_PruneNode(t *testing.T) {
 	t.Run("Node already exists and gets removed", func(t *testing.T) {
 		g := &Graph{
-			Nodes: map[string]Hashset{
+			Nodes: map[string]Dependents{
 				"a": {"b": true},
 			},
 			mutex: new(sync.RWMutex),
@@ -72,7 +72,7 @@ func TestGraph_PruneNode(t *testing.T) {
 	})
 	t.Run("Node does not exist and continues to not exist", func(t *testing.T) {
 		g := &Graph{
-			Nodes: map[string]Hashset{
+			Nodes: map[string]Dependents{
 				"a": {"b": true},
 			},
 			mutex: new(sync.RWMutex),
@@ -84,7 +84,7 @@ func TestGraph_PruneNode(t *testing.T) {
 	})
 	t.Run("Node exists and there are edges to the node which are removed too", func(t *testing.T) {
 		g := &Graph{
-			Nodes: map[string]Hashset{
+			Nodes: map[string]Dependents{
 				"a": {"b": true, "d": true},
 				"b": {},
 			},
@@ -118,7 +118,7 @@ func TestGraph_GetPruneCandidates(t *testing.T) {
 
 	t.Run("Pruning candidates don't exist so empty slice is returned", func(t *testing.T) {
 		g := Graph{
-			Nodes: map[string]Hashset{
+			Nodes: map[string]Dependents{
 				"a": {"b": true, "c": true},
 				"b": {"c": true, "d": true},
 			},
@@ -161,7 +161,7 @@ func TestGraph_PruneNodes(t *testing.T) {
 func BenchmarkGraph_AddOrReplaceNode(b *testing.B) {
 	g := createBenchmarkGraph()
 	for i := 0; i < b.N; i++ {
-		g.AddOrReplaceNode("a", Hashset{"b": true})
+		g.AddOrReplaceNode("a", Dependents{"b": true})
 	}
 }
 
@@ -180,7 +180,7 @@ func BenchmarkGraph_GetPruneCandidates(b *testing.B) {
 }
 func createBenchmarkGraph() Graph {
 	return Graph{
-		Nodes: map[string]Hashset{
+		Nodes: map[string]Dependents{
 			"a":       {"b": true, "c": true, "empty1": true, "empty2": true},
 			"b":       {"c": true, "d": true, "empty1": true, "empty2": true},
 			"c":       {"d": true, "e": true, "empty1": true, "empty2": true},
@@ -245,22 +245,22 @@ func BenchmarkGraph_GetPruneCandidatesForHugeGraph(b *testing.B) {
 func BenchmarkGraph_AddOrReplaceNodeForHugeGraph(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		g, p := createHugeGraphAndPruneCandidates()
-		g.AddOrReplaceNode(p[0], Hashset{"random": true})
+		g.AddOrReplaceNode(p[0], Dependents{"random": true})
 	}
 }
 
 func createHugeGraphAndPruneCandidates() (Graph, []string) {
-	m := make(map[string]Hashset, 10000)
+	m := make(map[string]Dependents, 10000)
 	pruneCandidates := make([]string, 500)
 	for i := 0; i < 5000; i++ {
-		h := make(Hashset, 1000)
+		h := make(Dependents, 1000)
 		for j := 5000; j < 6000; j++ {
 			h[strconv.Itoa(j)] = true
 		}
 		m[strconv.Itoa(i)] = h
 	}
 	for i := 5000; i < 5500; i++ {
-		m[strconv.Itoa(i)] = Hashset{}
+		m[strconv.Itoa(i)] = Dependents{}
 		pruneCandidates[i-5000] = strconv.Itoa(i)
 	}
 	g := Graph{
