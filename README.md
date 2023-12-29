@@ -6,7 +6,7 @@
 simple graph library written in `Go`. It provides simple APIs to create and manipulate graphs.
 It is a work in progress and is not ready for production use.
 
-# Highlights
+## Highlights
 
 1. Uses adjacency list representation for graphs. i.e. map[string]Dependents where `type Dependents map[string]bool`
 1. Provides APIs to create graph, add or replace a node, delete a node along with its edges, find candidates (think of
@@ -16,14 +16,14 @@ It is a work in progress and is not ready for production use.
 1. Keeps things simple by not providing any fancy algorithms to traverse the graph. It is left to the user to implement
    their own algorithms
 
-# Limitations
+## Limitations
 
 1. The library relies on user's judgement to ensure that the graph is acyclic. It does not provide any mechanism to
    detect cycles.
 1. The library assumes that the graph is created correctly. It does not provide any mechanism to validate the graph
    structure.
 
-# Illustration
+## Illustration
 
 Below is an illustration of a graph with nodes marked from `node-1 .. node-10`. These nodes are connected to each other
 via arrows. The arrows indicate the direction of the connection. For example, `node-1` is connected
@@ -37,7 +37,7 @@ cannot be processed until the 3 dependent nodes are processed and removed from t
 * This results in a new set of prune candidates. The new set of prune candidates are marked in color `yellow`.
 * The process continues until the graph is empty.
 
-## Flow
+### Flow
 
 * `GetPruneCandidates()` -> `node-4`, `node-5`, `node-6`,`node-8`, `node-9`, `node-11`
 
@@ -62,3 +62,6 @@ Let us prune all the candidates.
 * `PruneNodes(node-7)`
 
 ![Graph](./docs/design/rekha-chitra-illustration-prune-3.png)
+
+## Usage
+See code comments
