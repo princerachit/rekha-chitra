@@ -164,6 +164,7 @@ func createTestGraph() Graph {
 	}
 }
 
+// ----- Below set of benchmarks are for small graphs-----//
 func BenchmarkGraph_AddOrReplaceNode(b *testing.B) {
 	g := createBenchmarkGraph()
 	for i := 0; i < b.N; i++ {
@@ -174,7 +175,7 @@ func BenchmarkGraph_AddOrReplaceNode(b *testing.B) {
 func BenchmarkGraph_PruneNode(b *testing.B) {
 	g := createBenchmarkGraph()
 	for i := 0; i < b.N; i++ {
-		g.PruneNode("static1")
+		g.PruneNode("empty1")
 	}
 }
 
@@ -184,25 +185,24 @@ func BenchmarkGraph_GetPruneCandidates(b *testing.B) {
 		g.GetPruneCandidates()
 	}
 }
-
 func createBenchmarkGraph() Graph {
 	return Graph{
 		Nodes: map[string]Hashset{
-			"a":       {"b": true, "c": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"b":       {"c": true, "d": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"c":       {"d": true, "e": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"d":       {"e": true, "f": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"e":       {"f": true, "g": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"f":       {"g": true, "h": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"g":       {"h": true, "i": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"h":       {"i": true, "j": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"i":       {"j": true, "k": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"j":       {"k": true, "l": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"k":       {"l": true, "m": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"l":       {"m": true, "n": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"m":       {"n": true, "o": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"n":       {"o": true, "p": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
-			"o":       {"p": true, "q": true, "static1": true, "static2": true, "static4": true, "static5": true, "empty1": true, "empty2": true},
+			"a":       {"b": true, "c": true, "empty1": true, "empty2": true},
+			"b":       {"c": true, "d": true, "empty1": true, "empty2": true},
+			"c":       {"d": true, "e": true, "empty1": true, "empty2": true},
+			"d":       {"e": true, "f": true, "empty1": true, "empty2": true},
+			"e":       {"f": true, "g": true, "empty1": true, "empty2": true},
+			"f":       {"g": true, "h": true, "empty1": true, "empty2": true},
+			"g":       {"h": true, "i": true, "empty1": true, "empty2": true},
+			"h":       {"i": true, "j": true, "empty1": true, "empty2": true},
+			"i":       {"j": true, "k": true, "empty1": true, "empty2": true},
+			"j":       {"k": true, "l": true, "empty1": true, "empty2": true},
+			"k":       {"l": true, "m": true, "empty1": true, "empty2": true},
+			"l":       {"m": true, "n": true, "empty1": true, "empty2": true},
+			"m":       {"n": true, "o": true, "empty1": true, "empty2": true},
+			"n":       {"o": true, "p": true, "empty1": true, "empty2": true},
+			"o":       {"p": true, "q": true, "empty1": true, "empty2": true},
 			"empty1":  {},
 			"empty2":  {},
 			"empty3":  {},
@@ -216,4 +216,75 @@ func createBenchmarkGraph() Graph {
 		},
 		mutex: new(sync.RWMutex),
 	}
+}
+
+//------ Below set of benchmarks are for huge graphs------//
+
+// Since the benchmark function will account for graph creation
+// we have created a benchmark function for the huge
+func BenchmarkGraph_CreateHugeGraphAndPruneCandidates(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		createHugeGraphAndPruneCandidates()
+	}
+}
+
+func BenchmarkGraph_PruneNodeForHugeGraph(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		m, p := createHugeGraphAndPruneCandidates()
+		g := Graph{
+			Nodes: m,
+			mutex: new(sync.RWMutex),
+		}
+		g.PruneNode(p[0])
+	}
+}
+
+func BenchmarkGraph_PruneNodesForHugeGraph(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		m, p := createHugeGraphAndPruneCandidates()
+		g := Graph{
+			Nodes: m,
+			mutex: new(sync.RWMutex),
+		}
+		g.PruneNodes(p)
+	}
+}
+
+func BenchmarkGraph_GetPruneCandidatesForHugeGraph(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		m, _ := createHugeGraphAndPruneCandidates()
+		g := Graph{
+			Nodes: m,
+			mutex: new(sync.RWMutex),
+		}
+		g.GetPruneCandidates()
+	}
+}
+
+func BenchmarkGraph_AddOrReplaceNodeForHugeGraph(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		m, p := createHugeGraphAndPruneCandidates()
+		g := Graph{
+			Nodes: m,
+			mutex: new(sync.RWMutex),
+		}
+		g.AddOrReplaceNode(p[0], Hashset{"random": true})
+	}
+}
+
+func createHugeGraphAndPruneCandidates() (map[string]Hashset, []string) {
+	m := make(map[string]Hashset, 10000)
+	leaves := make([]string, 500)
+	for i := 0; i < 5000; i++ {
+		h := make(Hashset, 1000)
+		for j := 5000; j < 6000; j++ {
+			h[string(rune(j))] = true
+		}
+		m[string(rune(i))] = h
+	}
+	for i := 5000; i < 5500; i++ {
+		m[string(rune(i))] = Hashset{}
+		leaves[i-5000] = string(rune(i))
+	}
+	return m, leaves
 }
